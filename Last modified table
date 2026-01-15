@@ -1,0 +1,29 @@
+
+Identify the last modified table in your Oracle database.
+As a DBA, application team sometimes might ask you to provide details of last modified table in oracle. The table modification can be insert, update or delete. Below queries get details of last or latest modified table in oracle database. Run the queries depending upon the database version.
+
+
+Last modified table (10g and above)
+
+set linesize 500;
+select TABLE_OWNER, TABLE_NAME, INSERTS, UPDATES, DELETES, 
+to_char(TIMESTAMP,'YYYY-MON-DD HH24:MI:SS')
+from all_tab_modifications
+where table_owner<>'SYS' and
+EXTRACT(YEAR FROM TO_DATE(TIMESTAMP, 'DD-MON-RR')) > 2010
+order by 6;
+
+Last modified table (9i)
+
+
+In 9i, table monitoring has to be enabled manually or else the all_tab_modifcations wont keep record of changes. 10g onwards, oracle by default records the modifications
+
+
+Last modified table in oracle for 9i db
+
+col object for a20;
+col object_name for a20;
+SELECT OWNER, OBJECT_NAME, OBJECT_TYPE, 
+to_char(LAST_DDL_TIME,'YYYY-MON-DD HH24:MI:SS') 
+from dba_objects where LAST_DDL_TIME=(select max(LAST_DDL_TIME) 
+from dba_objects WHERE object_type='TABLE');
