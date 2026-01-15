@@ -1,0 +1,181 @@
+Listener.ora & tnsnames.ora
+Configure Oracle network connectivity with listener.ora and tnsnames.ora.
+Oracle networking is very important when you want to connect a particular database remotely. To setup network, we must have listener running on the server where database is hosted and tnsnames.ora configured on the client side.
+
+How to Set Up listener.ora
+
+Configure listener.ora in Multi-Tenant 
+
+Setting Up tnsnames.ora for Client Connectivity
+
+
+Make sure you open the listener port before configuration
+firewall-cmd --zone=public --add-port=1521/tcp --permanent
+
+
+How to Set Up listener.ora
+
+The listerner.ora file contains server side network configuration parameters. It can be found in the $ORACLE_HOME/network/admin directory on the server. Below is the default listener configuration
+
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.1.7)(PORT = 1521))
+    )
+  )
+
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (ORACLE_HOME = /u01/app/oracle/product/11.2.0.4/db_1)
+      (SID_NAME = orcl)
+    )
+  )
+Whenever you make changes to the listener.ora file, restart listener
+
+lsnrctl stop
+lsnrctl start
+
+
+listener.ora in Multi-Tenant Databases
+
+In multi-tenant architecture, each PDB can be considered as an individual databases. You can either configure one listener that accepts connections for all PDBs or you can create separate listener for each PDB.
+
+
+Method 1: One listener for all PDBs
+
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.1.7)(PORT = 1521))
+    )
+  )
+
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (ORACLE_HOME = /u01/app/oracle/product/19.3/db_home)
+      (SID_NAME = CDB)
+    )
+    (SID_DESC =
+      (ORACLE_HOME = /u01/app/oracle/product/19.3/db_home)
+      (SID_NAME = PDB1)
+    )
+    (SID_DESC =
+      (ORACLE_HOME = /u01/app/oracle/product/19.3/db_home)
+      (SID_NAME = PDB2)
+    )
+  )
+
+Method 2: Multiple listeners for individual PDBs
+
+
+You must configure multiple listeners for each individual PDB in real-time
+
+CDB_LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.1.9)(PORT = 1521))
+    )
+  )
+
+SID_LIST_CDB_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (ORACLE_HOME = /u01/app/oracle/product/19.3/db_home)
+      (SID_NAME = CDB)
+    )
+  )
+
+PDB1_LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.1.9)(PORT = 1522))
+    )
+  )
+
+SID_LIST_PDB1_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (ORACLE_HOME = /u01/app/oracle/product/19.3/db_home)
+      (SID_NAME = PDB1)
+    )
+  )
+
+PDB2_LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.1.9)(PORT = 1523))
+    )
+  )
+
+SID_LIST_PDB2_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (ORACLE_HOME = /u01/app/oracle/product/19.3/db_home)
+      (SID_NAME = PDB2)
+    )
+  )
+Starting all the listeners
+
+lsnrctl start cdb_listener
+lsnrctl start pdb1_listener
+lsnrctl start pdb2_listener
+Stop a specific listener
+
+lsnrctl stop pdb1_listener
+
+
+Setting Up tnsnames.ora for Client Connectivity
+
+tnsnames.ora file helps you connect from one database (or client) to another database. The tns file resides under $ORACLE_HOME/network/admin location.
+
+Make sure listener is running on the database server that you want to connect
+tnsnames.ora file contains the connection details of the remote database that you want to connect. First the request is sent to listener running on the target database and then the connection is established. On target server (that you want to connect), both listener and database must be up and running. Else, connection will not establish.
+
+
+Below is a completed tnsnames.ora file where we are trying to connect ORA12C database running on 192.168.1.9 host
+
+ORA12C =
+ (DESCRIPTION = 
+   (ADDRESS_LIST =
+     (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.1.9)(PORT = 1521))
+   )
+ (CONNECT_DATA =
+   (SERVICE_NAME = ORA12C)
+ )
+) 
+There is not restriction as to how many connections you can add to tnsnames.ora file. For example if you want to add multiple database connection entries, you file will look like below
+
+ORA12C =
+ (DESCRIPTION = 
+   (ADDRESS_LIST =
+     (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.0.9)(PORT = 1521))
+   )
+ (CONNECT_DATA =
+   (SERVICE_NAME = ORA12C)
+ )
+)
+
+ORA11G =
+ (DESCRIPTION = 
+   (ADDRESS_LIST =
+     (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.0.9)(PORT = 1521))
+   )
+ (CONNECT_DATA =
+   (SERVICE_NAME = ORA11G)
+ )
+)
+
+B6P =
+ (DESCRIPTION = 
+   (ADDRESS_LIST =
+     (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.1.77)(PORT = 1521))
+   )
+ (CONNECT_DATA =
+   (SERVICE_NAME = B6P)
+ )
+)
+Now that you have added tns entries to the file, let's connect remote database
+
+sqlplus scott@ORA12c
