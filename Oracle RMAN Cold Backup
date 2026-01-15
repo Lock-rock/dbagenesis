@@ -1,0 +1,38 @@
+Oracle RMAN Cold Backup
+Perform RMAN cold backups for consistent database snapshots.
+It’s easy to fire RMAN backups when database is running in archive log mode. RMAN will take your database backup along with archive logs.
+
+Put DB in mount mode 
+
+Take full backup 
+
+Open the database 
+
+You can even use RMAN to take backup of a database running in NOARCHIVELOG mode. But the condition is the database must not be open. You can fire the RMAN full backup in MOUNT mode.
+
+
+
+Put DB in mount mode
+
+As the database is running in NOARCHIVELOG mode, we cannot take RMAN backup when it is open. RMAN will work when your database is atleast in MOUNT mode
+
+SQL> startup mount;
+
+
+Take full backup
+
+Connect to RMAN and fire full DB backup. The backup will be by default stored inside FRA location
+
+rman target /
+
+RMAN> backup database;
+In case you want to store the database backup in a different location then
+
+RMAN> backup database format '/u02/backup/testdb/full_bkp_%U';
+
+
+Open the database
+
+Now you can open the database
+
+RMAN> alter database open;
