@@ -1,0 +1,60 @@
+Secure and monitor your database with Oracle auditing.
+Oracle database auditing allows you to monitor certain database actions happening inside the database. Auditing also helps in looking at the actions performed against a particular table, schema or certain specific rows.
+
+
+You can check database auditing is enabled via SHOW PARAMETER command
+
+Show parameter audit;
+
+
+The AUDIT_TRAIL parameter defines database auditing status. It can take any of the following values
+
+none - Database auditing is disabled
+
+os - Enabled, audit logs are stored at OS level, not inside the database
+
+db  - Enabled, audit records are stored inside database (SYS.AUD$ table)
+
+db,extended - Same as db but populates SQL_BIND & SQL_TEXT too
+
+xml - Enabled, audit records are stored at OS level in XML format
+
+xml,extended - Same as xml but populates SQL_BIND & SQL_TEXT too
+
+Default is DB if you create database via DBCA, else its NONE
+
+The AUDIT_FILE_DEST parameter defines the OS level location of the audit trail files. By default it is set to adump location.
+
+
+The AUDIT_SYS_OPERATIONS parameter defines auditing is enabled or disabled for any user connecting to database as SYSDBA. This is enabled by default. All the SYS operations audit records goes to OS level into AUDIT_FILE_DEST location.
+
+
+
+Move AUD$ Table to Another Tablespace
+
+By default the SYS.AUD$ (stores db audit records) and SYS.FGA_LOG$ (stores fine grain audit records) tables resides under SYSTEM tablespace
+
+col owner for a10;
+col segment_name for a10;
+col tablespace_name for a15;
+select owner, segment_name, segment_type, tablespace_name, 
+  bytes/1024/1024 as MB 
+from dba_segments 
+where segment_name in ('AUD$','FGA_LOG$');
+
+
+The DBMS_AUDIT_MGMT package allows you to change the default tablespace. Below query moves AUD$ & FGA_LOG$ tables to USERS tablespace
+
+BEGIN
+DBMS_AUDIT_MGMT.SET_AUDIT_TRAIL_LOCATION(
+audit_trail_type           => DBMS_AUDIT_MGMT.AUDIT_TRAIL_DB_STD,
+audit_trail_location_value => 'USERS');
+END;
+/
+If you want to only move AUD$ table then replace audit_trail_type with
+
+audit_trail_type           => DBMS_AUDIT_MGMT.AUDIT_TRAIL_AUD_STD
+If you want to only move FGA_LOG$ table then replace audit_trail_type with
+
+audit_trail_type           => DBMS_AUDIT_MGMT.AUDIT_TRAIL_FGA_STD
+Enjoy!
