@@ -1,0 +1,46 @@
+Oracle Home Cloning
+Clone Oracle Home for easy replication across environments.
+Have you ever imagine how easy it would be if you could just clone an existing installation of Oracle Software from one server to another server without performing a fresh installation!
+
+
+You might have definitely heard of Oracle Database cloning but you can even clone Oracle home without performing a fresh installation. It makes your life easy if you are planning to perform Oracle software installation on multiple servers at once.
+
+
+
+Benefits
+One time installation and clone the installation to all other servers
+
+Saves time and simple to perform
+
+No need to fire Oracle Installer on all servers
+
+
+Important: I will never use this method for production server installation as I just want it to be a clean installation. This method is good for single instance DB and not for RAC DBs. Always make sure the source and the destination servers have same setup and all pre-requisites completed.
+
+Cloning Steps
+
+On source machine, stop all the databases, listener and all other Oracle services running out from the ORACLE_HOME you want to clone
+
+SQL> shut immediate;
+
+# lsnrctl stop listener
+Go to ORACLE_HOME location and come out one directory path
+
+cd $ORACLE_HOME
+cd ..
+Create a tar file of the ORACLE_HOME directory. In our example, the Oracle software binaries are installed under 12.2.0 directory
+
+# tar -cvf oracle_home.tar 12.2.0
+Copy the above tar file onto the target server ORACLE_HOME location. This ORACLE_HOME location can be different from the source ORACLE_HOME location. Unzip (or un-tar) the tar file
+
+# tar -xvf oracle_home.tar
+Make sure on the new server the ORACLE_HOME is set to correct parth
+
+# env | grep ORA
+Run the clone perl script. Make sure to give proper ORACLE_HOME and ORACLE_BASE locations
+
+$ORACLE_HOME/perl/bin/perl $ORACLE_HOME/clone/bin/clone.pl ORACLE_BASE="/ora/app/oracle/" ORACLE_HOME="/ora/app/oracle/clone_home/12.2.0"
+OSDBA_GROUP=dba OSOPER_GROUP=oper -defaultHomeName
+Now you can create database using DBCA from the clone ORACLE_HOME
+
+dbca -silent -createDatabase -templateName General_Purpose.dbc -gdbName oraclo -sid oraclo -createAsContainerDatabase false -SysPassword sys -SystemPassword sys -emConfiguration NONE -datafileDestination /ora/data/oracle/db_files -storageType FS -characterSet AL32UTF8 -totalMemory 2048 -recoveryAreaDestination /ora/app/oracle/fast_recovery_area
