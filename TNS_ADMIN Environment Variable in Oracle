@@ -1,0 +1,30 @@
+TNS_ADMIN Environment Variable in Oracle
+Manage Oracle network files with the TNS_ADMIN variable.
+If you have multiple Oracle homes on a servers, I'm pretty sure that you must have multiple listener.ora file and tnsnames.ora files in the respective Oracle Homes. Is there a better way to maintain only one copy of listener.ora and tnsnames.ora files so that all Oracle Homes can refer to one location? 
+
+
+Yes, we can achieve this using TNS_ADMIN parameter in Oracle.
+
+Create TNS_ADMIN Location 
+
+Set TNS_ADMIN Parameter 
+
+Watch video TNS_ADMIN environment variable
+
+
+Create TNS_ADMIN Location
+
+First we create a directory which will act as a central location for listener.ora & tnsnames.ora. Preferably keep it outside any specific ORACLE_HOME
+
+mkdir -p $ORACLE_BASE/network
+Copy listener.ora file and tnsnames.ora file into above new folder. You may have to re-create listener.ora file to accept connections for multiple ORACLE_HOMEs.
+
+At this stage, you can delete any listener.ora & tnsnames.ora files from all the $ORACLE_HOEM/network/admin locations
+
+
+Set TNS_ADMIN Parameter
+
+It's a good idea to set this parameter inside the .bash_profile and add below line
+
+export TNS_ADMIN=$ORACLE_BASE/network
+Great, no matter which ORACLE_HOME you are connected to, the lsnrctl utility will read listener.ora file from TNS_ADMIN location. Also, any tns connections will be using tnsnames.ora file placed inside TNS_ADMIN location! 
