@@ -1,0 +1,33 @@
+
+Refresh Oracle databases to sync data across environments using Datapump.
+Oracle database refresh is the most common activity in any environment. There are multiple ways to perform the database refresh. Here you will find database refresh using Oracle Data Pump when source and target are one same / different versions.
+
+Oracle Data Pump Full DB Refresh (Same Version) 
+
+Oracle Data Pump Full DB Refresh (Different Version) 
+
+
+Oracle Data Pump Full DB Refresh (Same Version)
+
+If you have few schemas to refresh, then go with schema level refresh. On source
+
+expdp schemas=QBR directory=DUMPDIR dumpfile=QBR.dmp logfile=export.log
+On target, drop all objects owned by the user and perform impdp. Repeat same export and import for each schema you would like to refresh.
+
+impdp schemas=QBR directory=DUMPDIR dumpfile=QBR.dmp logfile=import.log
+If you have lot of schemas to refresh, then opt for full DB refresh is good. On source
+
+expdp full=Y directory=DUMPDIR dumpfile=full.dmp logfile=export.log
+On target, drop all non-oracle schemas
+
+Drop user <username> cascade;
+Make sure target tablespaces have enough space as source and perform import
+
+impdp full=Y directory=DUMPDIR dumpfile=full.dmp logfile=import.log
+
+Oracle Data Pump Full DB Refresh (Different Version)
+
+Performing lower version to higher version data pump refresh is similar to same version refresh. However, when you perform export from higher version (12c) and import into lower version (11g), then you must user VERSION clause while exporting from 12c
+
+expdp full=Y directory=DUMPDIR dumpfile=full.dmp logfile=export.log version=11.2
+Now the above exported dump file is ready to be imported into an 11g database!
