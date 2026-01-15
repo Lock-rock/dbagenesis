@@ -1,0 +1,117 @@
+Oracle Archivelog Mode
+Learn the benefits and configuration of Oracle Archivelog Mode.
+Oracle Database lets you save filled groups of redo log files to one or more offline destinations, known collectively as the archived redo log, or more simply the archive log. The process of turning redo log files into archived redo log files is called archiving. This process is only possible if the database is running in ARCHIVELOG mode.
+
+Checking Archivelog Mode 
+
+Set Archivelog Destination 
+
+Enable Archivelog Mode 
+
+Disable Arcivelog Mode 
+
+Perform Log Switch 
+
+Enable Archivelog Mode in RAC 
+
+How to Estimate Archive Destination Space 
+
+
+Checking Archivelog Mode
+
+Use below command to check the archivelog mode inside the oracle database
+
+SQL> archive log list;
+You can also use below command
+
+SQL> SELECT LOG_MODE FROM SYS.V$DATABASE;
+
+
+Set Archivelog Destination
+
+You must set a destination for archivelog files
+
+SQL> alter system set log_archive_dest_1='location=/u01/proddb/arch'
+
+
+Enable Archivelog Mode
+
+Please note that in order to enable archivelog mode, you must bounce the database
+
+SQL> Shut immediate;
+SQL> Startup mount;
+SQL> alter database archivelog;
+SQL> alter database open;
+SQL> archive log list;
+
+
+Disable Archivelog Mode
+
+The database must bounced even when you want to disable archivelog mode
+
+SQL> shut immediate;
+SQL> startup mount;
+SQL> alter database noarchivelog;
+SQL> alter database open;
+SQL> archive log list;
+
+
+Performing Log Switch
+
+While your database is running in archivelog mode, you can perform force log switch. This will archive the current redo log file and force LGWR to start over-writing other redo log member
+
+SQL> alter system switch logfile;
+
+
+Enable Archivelog Mode in RAC
+
+Let su check the db_recovery_file_dest_size parameter and add space to it
+
+SQL> show parameter recovery;
+SQL> alter system set db_recovery_file_dest_size = '20G' scope=both sid='*';
+If DB_RECOVERY_FILE_DEST is set to disk group, LOG_ARCHIVE_FORMAT is ignored
+
+If DB_RECOVERY_FILE_DEST is set to disk group location, LOG_ARCHIVE_FORMAT comes in effect
+
+On Node 1
+=========
+
+ALTER SYSTEM SET log_archive_dest_1='location=+FRA/RAC/ARCH/' SCOPE=spfile;
+
+ALTER SYSTEM SET log_archive_format='arch_%t_%s_%r.arc' SCOPE=spfile;
+
+./srvctl stop database -d RAC
+
+sqlplus / as sysdba
+startup mount;
+alter database archivelog;
+alter database open;
+select log_mode from v$database;
+
+
+How to Estimate Archive Destination Space
+
+The below query gives results of archive generation in oracle database. Use below query to find the archive space requirements and you can use it to estimate the archive destination size perfectly well
+
+SELECT A.*, 
+Round(A.Count#*B.AVG#/1024/1024/1024) Daily_Avg_gb 
+FROM 
+(SELECT 
+To_Char(First_Time,'YYYY-MM-DD') DAY, 
+Count(1) Count#, 
+Min(RECID) Min#, 
+Max(RECID) Max# 
+FROM v$log_history 
+GROUP 
+BY To_Char(First_Time,'YYYY-MM-DD') 
+ORDER 
+BY 1 
+) A, 
+(SELECT 
+Avg(BYTES) AVG#, 
+Count(1) Count#, 
+Max(BYTES) Max_Bytes, 
+Min(BYTES) Min_Bytes 
+FROM 
+v$log ) B;
+The above query will list total number of archives generated per day along with total size in GBs. You can easily get average archive size in GB per day and then multiply it with 30 to get archive destination space requirements for next 1 month!
