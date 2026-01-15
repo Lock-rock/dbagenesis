@@ -1,0 +1,160 @@
+Users, Roles & Profiles in Oracle
+Manage database security with users, roles, and profiles in Oracle.
+Users are the ultimate End-People who will be using Oracle database. Before a user can access the database, the DBA must create the user inside the database and grant necessary permissions.
+
+Oracle User Management 
+
+Roles in Oracle 
+
+Profile Management in Oracle 
+
+Find User Permissions 
+
+
+Oracle User Management
+By just creating a new user will not make the new user access the database. There are necessary roles and privileges that must be assigned to the user.
+
+
+To check all users inside database
+
+SQL> select username, account_status, default_tablespace from dba_users;
+To check current user
+
+SQL> show user;
+To Lock / Unlock user
+
+SQL> alter user scott account unlock;
+SQL> alter user scott account lock;
+To Create new user
+
+SQL> create user usr1 identified by usr1;
+To create new user by assigning a default tablespace
+
+SQL> create user usr2 identified by usr2 default tablespace users;
+To change user password
+
+SQL> alter user usr1 identified by oracle;
+
+Check Database Default Tablespace
+When you create a new user without specifying a default tablespace, database default tablespace is assigned to the user. Use below command to find database default tablespace
+
+SQL> select PROPERTY_NAME, PROPERTY_VALUE from database_properties where PROPERTY_NAME like '%DEFAULT%';
+
+Change User Default Tablespace
+Use below command to change default tablespace of a user
+
+SQL> alter user usr1 default tablespace example;
+Note: The objects created in the old tablespace remain unchanged even after changing a default tablespace for a user
+
+Tablespace Quota
+You can specify a limit onto how much tablespace quota (size) a user can use
+
+SQL> Alter user usr1 quota 10M on users;
+Note: Allocating quota doesn’t represent reserving the space. If 2 or more users are sharing a tablespace, quota will be filled up in first come first serve basis
+
+Roles in Oracle
+When you create a new user, you must at least assign CREATE SESSIONS privilege so the user can connect to the database
+
+grant create session to usr1;
+In real-time, there are more than one permission which must be assigned to a user. Sometimes the list might be very big. For example, there is a manager who must be able to perform:
+
+Insert into EMP & DEPT table
+
+Update DEPT table
+
+Delete from BONUS table
+
+Instead of giving above privileges to the user one by one, we can create a role inside the database. We then assign all privileges to the role and then assign the role to a user. It makes your life easy!
+
+
+Create New Role
+Use below command to create new role inside the database
+
+SQL> CREATE ROLE SALES_MANAGER;
+
+Grant Privileges to Role
+Assign all the privileges to the role NOT THE USER
+
+SQL> GRANT INSERT ON SCOTT.EMP TO SALES_MANAGER;
+SQL> GRANT INSERT ON SCOTT.DEPT TO SALES_MANAGER;
+SQL> GRANT UPDATE ON SCOTT.DEPT TO SALES_MANAGER;
+SQL> GRANT DELETE ON SCOTT.BONUS TO SALES_MANAGER;
+
+Grant Role to a User
+Now that you have assigned all the necessary privileges to a role, its time to assign the role to a user
+
+SQL> GRANT SALES_MANAGER TO USR1;
+
+Profile Management in Oracle
+A profile is a way to control system resource that can be used by a database user. Profile management is of two types - Password and Resource management
+
+
+Password Management
+The password management allows a DBA to have more control over user passwords. Some of the parameters you might be familiar in general like failed login attempts, password lock time etc
+
+FAILED_LOGIN_ATTEMPTS: How many times a user can fail to login
+
+PASSWORD_LOCK_TIME: Users who exceed failed login attempts, their password will be locked for specific time
+
+PASSWORD_LIFE_TIME: Till when password is valid in days
+
+PASSWORD_GRACE_TIME: Grace period for user to change password, else account will be locked
+
+PASSWORD_REUSE_TIME: After how many days user can re-use same password
+
+PASSWORD_REUSE_MAX: Specify how many times old password can be used
+
+PASSWORD_VERIFY_FUNCTION: Defines rules for setting a new password
+
+
+Resource Management
+Resource management helps in limiting the database abuse a user can cause. For example, if a user connects to database and never runs a query then this ideal connection will take system resources like CPU. To restrict such kind of issues, we have resource management parameters
+
+SESSIONS_PER_USER: How many concurrent sessions user can open
+
+IDLE_TIME: Total time user can stay inside database without doing any activity
+
+CONNECT_TIME: Total time user can stay inside database whether idle of active
+
+Note: resource management parameters will take in effect only if RESOURCE_LIMIT parameter is set to TRUE.
+Use below command to check the RESOURCE_LIMIT parameter
+
+SQL> show parameter resource_limit;
+By default the parameter is set to FALSE. You can change it via below
+
+SQL> alter system set resource_limit=TRUE scope=both;
+To create a new user profile
+
+SQL> create profile my_profile limit
+failed_login_attempts 3
+password_lock_time 1
+sessions_per_user 1
+idle_time 5;
+Note: password lock time by default is for 1 day. You can specify it in minutes (n/1440) or even in seconds (n/86400)
+To assign profile to a user
+
+SQL> alter user scott profile my_profile;
+To check profiles assigned to a user
+
+SQL> SELECT USERNAME, PROFILE FROM DBA_USERS WHERE USERNAME='SCOTT';
+To check profile parameter values
+
+SQL> SELECT * FROM DBA_PROFILES WHERE PROFILE='&PROFILE_NAME';
+
+Find User Permissions
+To check system privileges granted to a user
+
+select privilege from dba_sys_privs where grantee='SCOTT';
+To check object level privileges granted to a user or role
+
+SQL> select owner, table_name, privilege from dba_tab_privs where grantee='SALES_CLERK';
+To check roles assigned to a user
+
+select granted_role from dba_role_privs where grantee='SCOTT';
+To check permissions assigned to role
+
+select privilege from role_sys_privs where role='SALES_CLERK';
+select owner, table_name, privilege from role_tab_privs where role='SALES_CLERK';
+To check roles granted to another role
+
+SQL> select granted_role from role_role_privs where role='SALES_CLERK';
