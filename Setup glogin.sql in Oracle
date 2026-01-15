@@ -1,0 +1,20 @@
+Setup glogin.sql in Oracle
+Customize your SQL*Plus environment with glogin.sql.
+Let's take you want to execute some sql commands every time you login to SQL*PLUS. It would be so hard to run those commands manually whenever you start SQL*PLUS. With glogin.sql you can specify the commands you want to run every time you invoke SQL*PLUS.
+
+
+Any query, script, parameter, PL/SQL code etc, you can simply put under glogin.sql file and SQL*PLUS will first execute glogin.sql before allowing you to query database.
+
+
+I would like to display below message every time a user logs into the database
+
+setup glogin.sql in oracle - testdb database 
+
+
+Open the glogin.sql file
+
+vi $ORACLE_HOME/sqlplus/admin/glogin.sql
+Put below query at the end of the file
+
+select 'Welcome, you are connected to '||name||' database' "Hello" from v$database;
+Save and close. That's it, now whenever you login to SQL*PLUS, you will be greeted with a nice welcome message!
