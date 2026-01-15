@@ -1,0 +1,231 @@
+RMAN Duplicate Database PITR
+Restore a database to a specific point in time using RMAN duplication.
+RMAN active database duplication will perform database cloning from live database. It does not use RMAN backups to clone database. With RMAN duplicate command, you can use a previously taken backup and perform a Point-in-time clone on a target server.
+
+RMAN Duplicate PITR with Same SID 
+
+RMAN Duplicate PITR with different SID 
+
+
+Prerequisites
+Before you begin with this activity, make sure below items are addressed
+
+Source database is running in Archive log mode
+
+Check for space requirements on target server
+
+Servers are able to ping each other
+
+
+
+RMAN Duplicate PITR with Same SID
+In this section we will be duplicating database using RMAN where the source and target SID will be same. Our source SID is prod and the clone database SID will also be prod. Also note, the database file locations on target server will be same as our source server.
+
+
+I would like to perform a PITR clone (time 07:00 am) of prod database using the backup taken at 06:52 am.
+
+
+Configure Listener on clone server to accept incoming connections
+
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = clone.dbagenesis.com)(PORT = 1521))
+    )
+  )
+
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (ORACLE_HOME = /u01/app/oracle/product/12.2.0/db_home)
+      (SID_NAME = prod)
+    )
+  )
+Start the listener on the clone server	
+
+lsnrctl start listener
+Configure tns entries on the prod server to connect clone server
+
+prod_clone =
+ (DESCRIPTION = 
+   (ADDRESS_LIST =
+     (ADDRESS = (PROTOCOL = TCP)(HOST = clone.dbagenesis.com)(PORT = 1521))
+   )
+ (CONNECT_DATA =
+   (SERVICE_NAME = prod)
+ )
+)
+ Make sure to test the tnsping is working from prod to clone server
+
+tnsping prod_clone
+On prod server, create pfile from spfile and copy to clone server
+
+create pfile from spfile;
+
+cd $ORACLE_HOME/dbs
+scp initprod.ora oracle@clone.dbagenesis.com:$ORACLE_HOME/dbs
+Also copy the password file from prod to clone server
+
+scp orapwprod oracle@clone.dbagenesis.com:$ORACLE_HOME/dbs
+If no password file exists, create one via the below command and then copy
+
+orapwd file=$ORACLE_HOME/dbs/orapwprod force=y
+On the clone server, open the pfile that you copied from prod server and create directory locations
+
+cat $ORACLE_HOME/dbs/initprod.ora
+In my case I had to create below two main locations
+
+mkdir -p <control_file_locations>
+mkdir -p <adump_locations>
+For PITR cloning, we will search for the backup which was taken before PITR time and then find the locations of the backup pieces.
+
+rman duplicate database pitr - rman list backup summary
+
+In my case, above backup is taken at 06:52 which is before the target PITR 07:00 am. I will be using above particular backups to perform the cloning. Let us check each backup tag and copy the backup pieces to clone server under same location as source.
+
+
+We will start with first backup tag
+
+rman duplicate database pitr - rman list backup tag
+
+Create the same backup pieces location on clone server as you see under Piece Name
+
+mkdir -p /u01/FRA/PROD/backupset/2021_01_24
+Copy the backup pieces from source to clone server
+
+scp /u01/FRA/PROD/backupset/2021_01_24/o1_mf_annnn_TAG20210124T065238_j0t69pdz_.bkp oracle@clone.dbagenesis.com:/u01/FRA/PROD/backupset/2021_01_24/
+o1_mf_annnn_TAG20210124T065238_j0t69pdz_.bkp
+Lets check the second backup tag details
+
+rman duplicate database pitr - rman list second backup tag
+
+We already have created the backup piece location on clone server in the previous step, just copy the backup piece to target server
+
+scp /u01/FRA/PROD/backupset/2021_01_24/o1_mf_nnndf_TAG20210124T065239_j0t69qrh_.bkp oracle@clone.dbagenesis.com:/u01/FRA/PROD/backupset/2021_01_24/o1_mf_nnndf_TAG20210124T065239_j0t69qrh_.bkp
+Lets check the third backup tag
+
+rman duplicate database pitr - rman list third backup tag
+
+We already have created the backup piece location on clone server, just copy the backup piece to target server
+
+scp /u01/FRA/PROD/backupset/2021_01_24/o1_mf_annnn_TAG20210124T065242_j0t69tyh_.bkp oracle@clone.dbagenesis.com:/u01/FRA/PROD/backupset/2021_01_24/o1_mf_annnn_TAG20210124T065242_j0t69tyh_.bkp
+Lets check the fourth backup tag
+
+rman duplicate database pitr - rman list fourth backup tag
+
+Create the same backup pieces location on clone server as you see under Piece Name
+
+mkdir -p /u01/FRA/PROD/autobackup/2021_01_24
+Copy the backup piece from source to clone server
+
+scp /u01/FRA/PROD/autobackup/2021_01_24/o1_mf_s_1062658364_j0t69w43_.bkp oracle@clone.dbagenesis.com:/u01/FRA/PROD/autobackup/2021_01_24/o1_mf_s_1062658364_j0t69w43_.bkp
+Find all the archivelogs needed for recovery by searching for archivelogs generated after backup was triggered and till PITR and copy to clone server
+
+set lines 999;
+col name for a60;
+select first_time, next_time, name from v$archived_log;
+Take the clone database to nomount mode
+
+export ORACLE_SID=prod
+sqlplus / as sysdba
+startup nomount;
+exit;
+Start RMAN at source and perform PITR cloning
+
+rman target sys auxiliary sys@prod_clone
+
+--> give same sys password for both target and auxiliary
+
+duplicate target database to 'prod' until time 
+"TO_DATE('2021-01-24 07:00:00', 'YYYY-MM-DD HH24:MI:SS')" nofilenamecheck;
+
+
+RMAN Duplicate PITR with different SID
+To perform PITR to a different SID with different file locations, there are few more added steps. In this section, we will be cloning prod database to clone SID.
+
+
+Configure Listener on clone server to accept incoming connections
+
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = clone.dbagenesis.com)(PORT = 1521))
+    )
+  )
+
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (ORACLE_HOME = /u01/app/oracle/product/12.2.0/db_home)
+      (SID_NAME = clone)
+    )
+  )
+Start the listener
+
+lsnrctl start listener
+Configure tns entries on the prod server
+
+clone =
+ (DESCRIPTION = 
+   (ADDRESS_LIST =
+     (ADDRESS = (PROTOCOL = TCP)(HOST = clone.dbagenesis.com)(PORT = 1521))
+   )
+ (CONNECT_DATA =
+   (SERVICE_NAME = clone)
+ )
+)
+Make sure to test the tnsping is working from prod to clone server
+
+tnsping clone
+On prod server, create pfile from spfile and copy to clone server
+
+SQL> create pfile from spfile;
+
+cd $ORACLE_HOME/dbs
+scp initprod.ora oracle@clone.dbagenesis.com:$ORACLE_HOME/dbs/initclone.ora
+Also, copy the password file from prod to clone server
+
+scp orapwprod oracle@clone.dbagenesis.com:$ORACLE_HOME/dbs/orapwclone
+If no password file exists, create one via the below command and then copy
+
+orapwd file=$ORACLE_HOME/dbs/orapwclone force=y
+On the clone server, open the pfile that you copied from prod server. Replace prod with clone SID
+
+vi $ORACLE_HOME/dbs/initclone.ora
+
+:%s/prod/clone      --> replace prod with clone
+Add below two parameters to change data files and log files locations while cloning the database
+
+*.db_file_name_convert='/u01/app/oracle/oradata/PROD','/u01/app/oracle/oradata/clone'
+	*.log_file_name_convert='/u01/app/oracle/oradata/PROD','/u01/app/oracle/oradata/clone'
+Save the pfile & exit. Create respective directories from the clone pfile. In my case, I had to create below directories
+
+mkdir -p <adump_locations>
+mkdir -p <control_file_locations>	
+mkdir -p <df_file_name_convert_location>
+mkdir -p <log_file_name_convert_location>
+Make the backup files from the source database available to the destination server 
+
+cd /u01/app/oracle/fast_recovery_area/PROD/
+
+scp -r archivelog oracle@clone.dbagenesis.com:/u01/app/oracle/fast_recovery_area/PROD/	
+
+scp -r autobackup oracle@clone.dbagenesis.com:/u01/app/oracle/fast_recovery_area/PROD/
+	
+scp -r backupset oracle@clone.dbagenesis.com:/u01/app/oracle/fast_recovery_area/PROD/
+Take the clone server database to nomount stage
+
+export ORACLE_SID=clone
+sqlplus / as sysdba
+startup nomount;
+exit;
+Start RMAN at source and connect to clone database	
+
+rman target sys auxiliary sys@clone
+
+--> give same sys password for both target and auxiliary
+
+Duplicate target database to "clone" until time 
+"TO_DATE('2021-01-07 14:27:17', 'YYYY-MM-DD HH24:MI:SS')" nofilenamecheck;
+
+Now that you’ve learned about RMAN Duplicate with PITR, check out RMAN Duplicate from Active Database to see how you can clone a database without needing backups.
