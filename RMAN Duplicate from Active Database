@@ -1,0 +1,195 @@
+RMAN Duplicate from Active Database
+Clone databases directly with RMAN Active Duplication.
+Active database duplication does not require backup of the source database. It duplicates the live source database to the destination host by copying the database files over the network to the auxiliary (clone) instance. RMAN duplicate database can copy the required files as image copies or backup sets.
+
+RMAN duplicate database to same SID
+
+RMAN Duplicate to different SID
+
+
+Duplicate database activity is also known as rman database refresh
+
+Prerequisites
+Before you begin with this activity, make sure below items are addressed
+
+Source database is running in Archive log mode
+
+Check for space requirements on target server
+
+Servers are able to ping each other
+
+
+RMAN Duplicate Database to Same SID
+We are going to clone prod database which is running on prod.dbagenesis.com host. We have another server clone.dbagenesis.com where only oracle software is installed and no database created. We will be using RMAN duplicate from active database to copy prod database on clone server. 
+
+
+Configure Listener on clone server to accept incoming connections
+
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = clone.dbagenesis.com)(PORT = 1521))
+    )
+  )
+
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (ORACLE_HOME = /u01/app/oracle/product/12.2.0/db_home)
+      (SID_NAME = prod)
+    )
+  )
+Start the listener on clone server
+
+lsnrctl start listener
+Configure tns entries on the prod server
+
+prod_clone =
+ (DESCRIPTION = 
+   (ADDRESS_LIST =
+     (ADDRESS = (PROTOCOL = TCP)(HOST = clone.dbagenesis.com)(PORT = 1521))
+   )
+ (CONNECT_DATA =
+   (SERVICE_NAME = prod)
+ )
+)
+Make sure to test the tnsping is working from prod to clone server
+
+tnsping prod_clone
+On prod server, create pfile from spfile and copy to clone server
+
+SQL> create pfile from spfile;
+scp $ORACLE_HOME/dbs/initprod.ora oracle@clone.dbagenesis.com:$ORACLE_HOME/dbs
+Also copy the password file from prod to clone server
+
+scp $ORACLE_HOME/dbs/orapwprod oracle@clone.dbagenesis.com:$ORACLE_HOME/dbs
+If no password file exists, create one via below command and then copy
+
+orapwd file=$ORACLE_HOME/dbs/orapwprod force=y
+On the clone server, open the pfile that you copied from prod server and create directory locations
+
+cat $ORACLE_HOME/dbs/initprod.ora
+In my case I had to create below two main locations
+
+mkdir -p <control_file_locations>
+mkdir -p <adump_locations>
+Also create data files and redo log files locations from source on clone server
+
+mkdir -p <soruce_db_files_loc>
+mkdir -p <source_redo_files_loc>
+Take clone server database to nomount stage
+
+export ORACLE_SID=prod
+
+sqlplus / as sysdba
+SQL> startup nomount;
+SQL> exit;
+
+Cloning will fail if you do not exit from sqlplus
+
+Connect to rman on prod server to both prod database and also the auxiliary (clone) database
+
+rman target sys auxiliary sys@prod_clone
+
+--> give same sys password for both target and auxiliary
+Lets duplicate the database via RMAN duplicate from active database
+
+RMAN> duplicate target database to 'prod' from active database nofilenamecheck;
+Once cloning is done, you should see below
+
+rman duplicate database to same sid - clone datafile all
+
+On the clone server, check if the cloned database is open and running fine
+
+rman duplicate database to same sid - oracle database 12c enterprise 
+
+
+
+RMAN Duplicate to different SID
+We are going to clone prod database which is running on prod.dbagenesis.com host. We have another server clone.dbagenesis.com where only oracle software is installed and no database created.
+
+
+We will be using RMAN duplicate from active database to copy prod database on clone server with a different name (SID).
+
+
+Configure Listener on clone server to accept incoming connections
+
+LISTENER =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = clone.dbagenesis.com)(PORT = 1521))
+    )
+  )
+
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (ORACLE_HOME = /u01/app/oracle/product/12.2.0/db_home)
+      (SID_NAME = clone)
+    )
+  )
+Start the listener on clone server
+
+lsnrctl start listener
+Configure tns entries on the prod server
+
+clone =
+ (DESCRIPTION = 
+   (ADDRESS_LIST =
+     (ADDRESS = (PROTOCOL = TCP)(HOST = clone.dbagenesis.com)(PORT = 1521))
+   )
+ (CONNECT_DATA =
+   (SERVICE_NAME = clone)
+ )
+)
+Make sure to test the tnsping is working from prod to clone server
+
+tnsping clone
+On prod server, create pfile from spfile and copy to clone server
+
+SQL> create pfile from spfile;
+scp $ORACLE_HOME/dbs/initprod.ora oracle@clone.dbagenesis.com:$ORACLE_HOME/dbs/initclone.ora
+Also copy the password file from prod to clone server
+
+scp $ORACLE_HOME/dbs/orapwprod oracle@clone.dbagenesis.com:$ORACLE_HOME/dbs/orapwclone
+If no password file exists, create one via below command and then copy
+
+orapwd file=$ORACLE_HOME/dbs/orapwclone force=y
+On the clone server, open the pfile that you copied from prod server. Replace prod with clone SID
+
+vi $ORACLE_HOME/dbs/initclone.ora
+
+:%s/prod/clone      --> replace prod with clone
+Add below two parameters to change data files and log files locations while cloning database
+
+*.db_file_name_convert='/u01/app/oracle/oradata/prod','/u01/app/oracle/oradata/clone'
+*.log_file_name_convert='/u01/app/oracle/oradata/prod','/oradb/app/oracle/oradata/clone'
+
+Save & exit
+Create respective directories from the clone pfile. In my case, I had to create below directories
+
+mkdir -p <control_file_locations>
+mkdir -p <adump_locations>
+mkdir -p <FRA_location>
+mkdir -p /u01/app/oracle/oradata/clone
+Also create data files and redo log files locations from source on clone server
+
+mkdir -p <soruce_db_files_loc>
+mkdir -p <source_redo_files_loc>
+Take clone server database to nomount stage
+
+export ORACLE_SID=clone
+
+sqlplus / as sysdba
+SQL> startup nomount;
+SQL> exit;
+Connect to rman on prod server to both prod database and also the auxiliary (clone) database
+
+rman target sys auxiliary sys@clone
+
+--> give same sys password for both target and auxiliary
+Let's refresh or duplicate the database via RMAN duplicate from active database
+
+RMAN> duplicate target database to 'clone' from active database nofilenamecheck;
+
+Now that you’ve learned about RMAN Duplicate from Active Database, check out RMAN Duplicate Database PITR to see how you can clone a database with backups
