@@ -1,0 +1,40 @@
+Grant Select on all tables in a schema
+Grant select privileges on all tables within a schema efficiently.
+I encountered this situation where I wanted to grant SELECT on all the tables owned by one user to another user.
+
+
+There are two simple ways to achieve this
+
+Generate SQL for each table 
+
+Using simple LOOP statement 
+
+
+Generate SQL for each table
+
+In this method, we will generate GRANT SELECT statement for each table using below query. Here we are trying to GRANT SELECT on each table owned by HR user to SCOTT user
+
+Select 'GRANT SELECT ON HR.'||Table_Name||' TO SCOTT;' 
+From All_Tables Where Owner='HR';
+Here is the sample output of the above command
+
+generate sql for each table-oracle sql grant
+
+Now you can execute individual statements from the above output to GRANT SELECT ON all HR tables to SCOTT user.
+
+
+
+Using simple LOOP statement
+
+We can take use of PL/SQL and write a simple loop statement as below to automatically execute the GRANT SELECT statements for us. Again we are trying to GRANT SELECT on every table owned by HR user to SCOTT user
+
+BEGIN
+   FOR R IN (SELECT owner, table_name FROM all_tables WHERE owner='HR') LOOP
+      EXECUTE IMMEDIATE 'grant select on '||R.owner||'.'||R.table_name||' to SCOTT';
+   END LOOP;
+END;
+/
+Here is the sample output of the above command
+
+grant select on all schema tables
+
