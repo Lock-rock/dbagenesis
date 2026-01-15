@@ -1,0 +1,27 @@
+
+Learn to safely drop all objects within a schema in Oracle.
+The below script will drop all the objects owned by a schema. This will not delete the user but only deletes the objects
+
+SET SERVEROUTPUT ON SIZE 1000000
+set verify off
+BEGIN
+FOR c1 IN (SELECT OWNER,table_name, constraint_name FROM dba_constraints 
+WHERE constraint_type = 'R' and owner=upper('&shema_name')) LOOP
+EXECUTE IMMEDIATE 'ALTER TABLE '||' "'||c1.owner||'"."'||c1.table_name||'" DROP CONSTRAINT ' || c1.constraint_name;
+END LOOP;
+FOR c1 IN (SELECT owner,object_name,object_type FROM dba_objects where owner=upper('&shema_name')) LOOP
+BEGIN
+IF c1.object_type = 'TYPE' THEN
+EXECUTE IMMEDIATE 'DROP '||c1.object_type||' "'||c1.owner||'"."'||c1.object_name||'" FORCE';
+END IF;
+IF c1.object_type != 'DATABASE LINK' THEN
+EXECUTE IMMEDIATE 'DROP '||c1.object_type||' "'||c1.owner||'"."'||c1.object_name||'"';
+END IF;
+EXCEPTION
+WHEN OTHERS THEN
+NULL;
+END;
+END LOOP;
+EXECUTE IMMEDIATE('purge dba_recyclebin');
+END;
+/
