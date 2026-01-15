@@ -1,0 +1,46 @@
+
+Explore the use cases and benefits of table clustering in Oracle.
+In this article we will creating a table cluster inside Oracle. We will also be creating couple of tables inside the cluster table.
+
+Create Cluster Table 
+
+Create Index on Cluster Table 
+
+Create Tables Inside Cluster 
+
+Drop Table Inside Cluster 
+
+Drop Cluster 
+
+
+Create Cluster Table
+CREATE CLUSTER employees_departments_cluster
+(department_id NUMBER(2));
+
+
+Create Index on Cluster Table
+
+Without create an index on cluster table, you cannot proceed. This is an Index Cluster 
+
+CREATE INDEX idx_emp_dept_cluster ON CLUSTER employees_departments_cluster;
+
+
+Create Tables Inside Cluster
+
+Create tables inside cluster based on cluster key column
+
+CREATE TABLE EMP_CLUST 
+CLUSTER employees_departments_cluster (deptno)
+as select * from emp;
+CREATE TABLE DEPT_CLUST 
+CLUSTER employees_departments_cluster (deptno)
+as select * from dept;
+
+
+Drop Table Inside Cluster
+DROP TABLE EMP_CLUST;
+DROP TABLE DEPT_CLUST;
+
+
+Drop Cluster
+DROP CLUSTER employees_departments_cluster
