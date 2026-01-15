@@ -1,0 +1,38 @@
+
+Create an Oracle database manually with detailed instructions.
+It’s always a good ideas to create Oracle database using DBCA. This method of creating Oracle database is outdated but you must also know how to create database manually. It is one of the most frequent interview questions too.
+
+
+Before you start, make sure Oracle software is installed on the server
+
+Copy pfile from any other database server and rename it to new database SID
+
+other database pfile
+initproddb.ora
+
+change the file name to reflect new SID
+initdevdb.ora
+Open the initdevdb.ora file, find and replace all old SID (proddb) with new SID (devdb). Save and close the pfile. Now create all new directories on the server as per the pfile
+
+mkdir <location_from_new_pfile>
+Set environmental variables to connect new SID
+
+export ORACLE_SID=devdb
+Make sure undo tablespace name is same in pfile and also create database statement
+
+STARTUP NOMOUNT;
+
+CREATE DATABASE devdb
+   USER SYS IDENTIFIED BY sys
+   USER SYSTEM IDENTIFIED BY sys
+   LOGFILE GROUP 1 ('/u01/app/oracle/oradata/devdb/redo01.log') SIZE 100M,
+           GROUP 2 ('/u01/app/oracle/oradata/devdb/redo02.log') SIZE 100M
+   DATAFILE '/u01/app/oracle/oradata/devdb/system01.dbf' SIZE 325M 
+   SYSAUX DATAFILE '/u01/app/oracle/oradata/devdb/sysaux01.dbf' SIZE 325M
+   DEFAULT TEMPORARY TABLESPACE temp TEMPFILE '/u01/app/oracle/oradata/devdb/temp01.dbf' SIZE 20M
+   UNDO TABLESPACE UNDOTBS1 DATAFILE '/u01/app/oracle/oradata/devdb/undotbs01.dbf' SIZE 200M;
+Run post DB CREATE scripts
+
+@?/rdbms/admin/catalog.sql
+@?/rdbms/admin/catproc.sql
+@?/sqlplus/admin/pupbld.sql
