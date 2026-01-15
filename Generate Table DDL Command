@@ -1,0 +1,78 @@
+Generate Table DDL Command
+Easily Generate DDL Commands for Tables, Views, and Users in Oracle.
+The DBMS_METADATA package allows you to generate DDL commands for any of the database objects inside Oracle database.
+
+Generate Table DDL Command 
+
+Generate View DDL Command 
+
+Generate Materialized View DDL Command 
+
+Generate Create User DDL Command 
+
+
+Generate Table DDL Command
+
+In real-time, you might want to generate CREATE TABLE statement for an existing table. This can be achieved using dbms_metadata.get_ddl package
+
+set long 100000
+set pagesize 0 ;
+set linesize 1000; 
+set feedback off ;
+set verify off ;
+set trimspool on;
+
+SELECT DBMS_METADATA.get_ddl ('TABLE', 'EMPLOYEES','HR') from dual;
+The above command will give you complete CREATE TABLE statement along with segment attributes. In  case you just want the CREATE TABLE statement along with TABLESPACE details then
+
+BEGIN
+DBMS_METADATA.set_transform_param (DBMS_METADATA.session_transform, 'SQLTERMINATOR', true);
+DBMS_METADATA.set_transform_param (DBMS_METADATA.session_transform, 'PRETTY', true);
+DBMS_METADATA.set_transform_param (DBMS_METADATA.session_transform, 'SEGMENT_ATTRIBUTES', true);
+DBMS_METADATA.set_transform_param (DBMS_METADATA.session_transform, 'STORAGE', false);
+END;
+/
+
+SELECT DBMS_METADATA.get_ddl ('TABLE', 'EMPLOYEES','HR') from dual;
+
+
+Generate View DDL Command
+
+The below statement will give CREATE VIEW command to respective view
+
+set long 100000
+set pagesize 0 ;
+set linesize 1000; 
+set feedback off ;
+set verify off ;
+set trimspool on;
+
+SELECT DBMS_METADATA.get_ddl ('VIEW','TEST_VIEW','HR') from dual;
+
+
+Generate Materialzied View DDL Command
+
+The below statement will give CREATE MATERIALIZED VIEW command for MV
+
+set long 100000
+set pagesize 0 ;
+set linesize 1000; 
+set feedback off ;
+set verify off ;
+set trimspool on;
+
+select dbms_metadata.get_ddl('MATERIALIZED_VIEW', '&MVIEW_NAME','&owner') from dual;
+
+
+Generate Create User DDL Command
+
+Below query will generate CREATE USER ddl command for an existing user
+
+set long 100000
+set pagesize 0 ;
+set linesize 1000; 
+set feedback off ;
+set verify off ;
+set trimspool on;
+
+SELECT DBMS_METADATA.GET_DDL('USER','HR') FROM dual;
