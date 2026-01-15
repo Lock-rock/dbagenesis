@@ -1,0 +1,322 @@
+
+Automate tasks effectively using Oracle's DBMS_SCHEDULER.
+DBAs, for years, are writing OS level scripts to execute different database related tasks and schedule it via cront tab in Linux. The cron jobs work perfectly well until Oracle released DBMS_SCHEDULER in 10g version.
+
+How DBMS_SCHEDULER works? 
+
+STEP 1 – Create program 
+
+STEP 2 – Create schedule 
+
+STEP 3 – Create job 
+
+Important Queries 
+
+
+Note: DBMS_SCHEDULER has introduced many benefits yet, many DBAs still stick to OS level scripting.
+
+Before you learn how to schedule jobs via DBMS_SCHEDULER, let us compare it with cron jobs (OS level scripts)
+
+DBMS_SCHEDULER syntax works same regardless of OS
+
+Can run jobs based on database events
+
+If DB is down during a job schedule, it will be executed again once DB starts up
+
+You can run jobs on remote machines (11gR1 and above)
+
+Schedule chain of jobs one after another
+
+All in all, it's time for you to migrate most of your OS-level scripts to DBMS_SCHEDULER!
+
+
+How DBMS_SCHEDULER works?
+
+Let us first get familiar with different components inside DBMS_SCHEDULER. There many components but we will be looking at the most important ones.
+
+scheduling jobs with dbms scheduler steps
+
+As you can see from the above diagram, we need to
+
+First define a program that is capable of executing PL/SQL script, shell script or stored procedures
+
+Next, we need to define a schedule for the above program. The schedule contains execution frequency
+
+Finally, we need to create a job with program name (created in first step) and schedule (created in second step) to DBMS_SCHEDULER
+
+
+Note: you can directly write a job which includes a program and a schedule. In that case you need not specifically create a program or schedule. But, it is always good to follow standards. Always create a program, followed by schedule and finally job!
+
+Ultimately you will be working with three most important procedures under DBMS_SCHEDULER
+
+DBMS_SCHEDULER.create_program
+
+DBMS_SCHEDULER.create_schedule
+
+DBMS_SCHEDULER.create_job
+
+
+STEP 1 – Create program
+
+A program tells DBMS_SCHEDULER as to what to execute. It is capable of executing
+
+PL/SQL Block
+
+Stored Procedure
+
+OS level executable file
+
+Sample program to execute a PL/SQL program:
+
+BEGIN
+  DBMS_SCHEDULER.create_program(
+  program_name => 'plsql_program',
+  program_type => 'PLSQL_BLOCK',
+  program_action => 'BEGIN DBMS_STATS.gather_schema_stats(''HR''); END;',
+  enabled => TRUE,
+  comments => 'Program to gather HR user statistics');
+  DBMS_SCHEDULER.enable (name=>'plsql_program');
+END;
+/
+Sample program to execute a stored procedure
+
+
+Note: you must define number_of_arguments even before you can enable a program. Notice arguments in the below code must be defined before enabling the program
+
+BEGIN
+  DBMS_SCHEDULER.create_program(
+  program_name => 'stored_procedure_program',
+  program_type => 'STORED_PROCEDURE',
+  program_action => 'DBMS_STATS.gather_schema_stats',
+  number_of_arguments => 1,
+  enabled => FALSE,
+  comments => 'Program to gather HR stats using stored procedure');
+
+  DBMS_SCHEDULER.define_program_argument(
+   program_name => 'stored_procedure_program',
+   argument_name => 'ownname',
+   argument_position => 1,
+   argument_type => 'VARCHAR2',
+   default_value => 'SYS');
+
+  DBMS_SCHEDULER.enable (name=>'stored_procedure_program');
+END;
+/
+Sample program to execute an OS level executable script file:
+
+BEGIN
+  DBMS_SCHEDULER.create_program(
+  program_name => 'executable_program',
+  program_type => 'EXECUTABLE',
+  program_action => '/u02/rman/scripts/db_full_bkp.sh',
+  enabled => TRUE,
+  comments => 'Program to trigger rman full backup');
+  DBMS_SCHEDULER.enable (name=>'executable_program');
+END;
+/
+
+Drop, enable, disable program
+
+To drop a program
+
+BEGIN
+  DBMS_SCHEDULER.drop_program(program_name=>'plsql_program');
+END;
+/
+To enable / disable a program
+
+-- to disable a program
+BEGIN
+  DBMS_SCHEDULER.disable (name=>'plsql_program');
+END;
+/
+
+-- to enable a program
+BEGIN
+  DBMS_SCHEDULER.enable (name=>'plsql_program');
+END;
+/
+
+View program details
+
+You must query DBA_SCHEDULER_PROGRAMS to view details about scheduled programs
+
+set lines 999;
+col owner for a20;
+col program_name for a30;
+SELECT owner, program_name, enabled FROM dba_scheduler_programs where program_name like '&enter_program_name';
+
+
+STEP 2 – Create schedule
+
+Schedules is what defines DBMS_SCHEDULER when to run a program and at what frequency / interval.
+
+
+Below is a sample schedule that repeats every hour, exactly at 00 minutes and has no end date
+
+BEGIN
+DBMS_SCHEDULER.create_schedule (
+  schedule_name => 'hourly_sched',
+  start_date => SYSTIMESTAMP,
+  repeat_interval => 'freq=hourly; byminute=0',
+  end_date => NULL,
+  comments => 'Run every hour at 00 minutes everyday');
+END;
+/
+
+Drop a schedule
+
+Use below code to drop an existing schedule
+
+BEGIN
+  DBMS_SCHEDULER.drop_schedule (schedule_name => 'hourly_sched');
+END;
+/
+
+View schedule details
+
+To see schedule details, you must query DBA_SCHEDULER_SCHEDULES view
+
+set lines 999;
+col schedule_name for a30;
+SELECT owner, schedule_name from DBA_SCHEDULER_SCHEDULES;
+
+More schedule examples
+
+run everyday at midnight
+
+'freq=daily; byhour=0; byminute=0; bysecond=0;'
+run everyday at 4 pm
+
+'freq=daily; byhour=16; byminute=0; bysecond=0;'
+run every hour at 10 minutes. 1:10, 2:10 …..
+
+'freq=hourly; byminute=10; bysecond=0;'
+run every 5 minutes
+
+'freq=minutely; interval=5; bysecond=0;'
+run every monday and thursday at 9 pm
+
+'freq=weekly, byday=mon,thu; byhour=21; byminute=0; bysecond=0;'
+run friday of each quarter
+
+'freq=monthly; bymonth=1,4,7,10; byday=fri;'
+
+
+STEP 3 – Create job
+
+As mentioned earlier, you need not create program and schedule separately. You can define both program and schedule inside a job. But, it is always good to follow a standard.
+
+
+DBMS_SCHEDULER is all about jobs. A job consists of a program and a schedule. 
+
+DBMS_SCHEDULER cannot execute a program or schedule independently. You must create a job and submit to the scheduler.
+
+BEGIN
+DBMS_SCHEDULER.create_job (
+  job_name => 'test_sched_job',
+  program_name => 'plsql_program',
+  schedule_name => 'hourly_sched',
+  enabled => TRUE,
+  comments => 'My test scheduler job');
+END;
+/
+
+Drop, enable, disable job
+
+To drop a job
+
+BEGIN
+  DBMS_SCHEDULER.drop_job (job_name=>'test_sched_job');
+END;
+/
+To enable / disable a job
+
+-- to disable a job
+BEGIN
+  DBMS_SCHEDULER.disable (name=>'test_sched_job');
+END;
+/
+
+-- to enable a job
+BEGIN
+  DBMS_SCHEDULER.enable (name=>'test_sched_job');
+END;
+/
+
+View job details
+
+To see job details, you must query DBA_SCHEDULER_JOBS view
+
+set lines 999;
+col job_name for a30;
+select owner, job_name, enabled from dba_scheduler_jobs;
+
+Run jobs manually
+
+Even though you have scheduled jobs inside DBMS_SCHEDULER on a set schedule, you can manually execute jobs too
+
+BEGIN
+  DBMS_SCHEDULER.run_job (job_name => 'test_sched_job', use_current_session => TRUE);
+END;
+/
+
+View job status
+
+To see status of the scheduler job executed previously, you must query DBA_SCHEDULER_JOB_RUN_DETAILS view
+
+select job_name, status, run_duration
+from dba_scheduler_job_run_details
+where job_name='&enter_job_name';
+
+
+Important Queries
+
+Find the details of the program attached to a job
+
+SELECT job_name, enabled, program_name
+FROM dba_scheduler_jobs
+WHERE job_name LIKE 'TEST%';
+job-program-name
+
+Find schedule details attached to a job
+
+SELECT job_name, schedule_name, start_date
+FROM dba_scheduler_jobs
+WHERE job_name like 'TEST%';
+job-sched-name
+
+Find job current status if it is running or not
+
+SELECT JOB_NAME, STATE FROM DBA_SCHEDULER_JOBS
+WHERE JOB_NAME LIKE 'TEST%';
+Below are different job states
+
+Disabled – Job is disabled
+
+Scheduled – Job is scheduled to be executed
+
+Running – Job is currently running
+
+Completed – Job completed, not scheduled to run again
+
+Stopped – Job scheduled to run once and was stopped during its run
+
+Broken – Job is broken and has issues
+
+Failed – Job scheduled to run once and failed
+
+Succeeded – Job scheduled to run once and completed successfully
+
+scheduling jobs with dbms -job-state
+
+Check progress of all running jobs
+
+SELECT * FROM ALL_SCHEDULER_RUNNING_JOBS;
+Find the log details of job runs
+
+SELECT to_char(log_date, 'DD-MON-YY HH24:MM:SS') TIMESTAMP, job_name, status,
+SUBSTR(additional_info, 1, 40) ADDITIONAL_INFO
+FROM user_scheduler_job_run_details
+WHERE job_name like 'TEST%'
+ORDER BY log_date ;
